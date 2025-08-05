@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Blue Colors -->
+    <color name="blue_50">#FFF0F9FF</color>
+    <color name="blue_500">#FF3B82F6</color>
+    <color name="blue_600">#FF2563EB</color>
+    <color name="blue_700">#FF1D4ED8</color>
+
+    <!-- Gray Colors -->
+    <color name="gray_50">#FFF9FAFB</color>
+    <color name="gray_200">#FFE5E7EB</color>
+    <color name="gray_300">#FFD1D5DB</color>
+    <color name="gray_400">#FF9CA3AF</color>
+    <color name="gray_500">#FF6B7280</color>
+    <color name="gray_600">#FF4B5563</color>
+    <color name="gray_700">#FF374151</color>
+    <color name="gray_800">#FF1F2937</color>
+
+    <!-- Green Colors -->
+    <color name="green_100">#FFDCFCE7</color>
+    <color name="green_500">#FF22C55E</color>
+    <color name="green_600">#FF16A34A</color>
+    <color name="green_700">#FF15803D</color>
+
+    <!-- Indigo Colors -->
+    <color name="indigo_100">#FFE0E7FF</color>
+
+    <!-- Fan Button Colors -->
+    <color name="fan_button_background">@color/gray_300</color>
+    <color name="fan_button_background_on">@color/green_500</color>
+    <color name="fan_button_icon_color">@color/gray_600</color>
+    <color name="fan_button_icon_color_on">@android:color/white</color>
+    <color name="red_700">#D32F2F</color>
+</resources>
