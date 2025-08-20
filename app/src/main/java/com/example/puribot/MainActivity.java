@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat;
 import com.google.android.material.button.MaterialButton;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
@@ -39,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
     private OutputStream outputStream;
-
+    private InputStream inputStream;
     private View statusDot;
     public TextView status_text;
     private boolean isConnected = false;
@@ -53,6 +54,11 @@ public class MainActivity extends AppCompatActivity {
         statusDot = findViewById(R.id.status_dot);
         MaterialButton fanToggle = findViewById(R.id.fan_toggle_button);
         TextView fanStatusText = findViewById(R.id.fan_status_text);
+        MaterialButton settings_button = findViewById(R.id.settings_button);
+        settings_button.setOnClickListener(v->{
+            Intent intent = new Intent(MainActivity.this, settings_Page.class);
+            startActivity(intent);
+        });
 
         // Movement buttons
         MaterialButton btnForward = findViewById(R.id.button_forward);
@@ -179,11 +185,15 @@ public class MainActivity extends AppCompatActivity {
                         bluetoothSocket = espDevice.createRfcommSocketToServiceRecord(ESP32_UUID);
                         bluetoothSocket.connect();
                         outputStream = bluetoothSocket.getOutputStream();
+                        inputStream = bluetoothSocket.getInputStream();
                         isConnected = true;
+                        // ✅ Share the socket with SettingsActivity
+                        settings_Page.setBluetoothSocket(bluetoothSocket);
                         runOnUiThread(() -> {
                             updateStatus(true);
                             Toast.makeText(this, "Connected to ESP32", Toast.LENGTH_SHORT).show();
                         });
+                        startListeningForData();
                         return;
                     } catch (IOException e) {
                         Log.e(TAG, "Connection attempt " + attempt + " failed", e);
@@ -202,6 +212,43 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    private void startListeningForData() {
+        new Thread(() -> {
+            byte[] buffer = new byte[1024];
+            int bytes;
+
+            while (isConnected) {
+                try {
+                    if (inputStream.available() > 0) {
+                        bytes = inputStream.read(buffer);
+                        String received = new String(buffer, 0, bytes).trim();
+
+                        runOnUiThread(() -> {
+                            TextView air_quality_value = findViewById(R.id.air_quality_value);
+                            if(Integer.parseInt(received)>=2500){
+                                air_quality_value.setText("Bad");
+                                air_quality_value.setTextColor(getResources().getColor(R.color.red_700));
+                            }
+                            else if(Integer.parseInt(received)>=2000 && Integer.parseInt(received)<2500){
+                                air_quality_value.setText("Average");
+                                air_quality_value.setTextColor(getResources().getColor(R.color.orange_700));
+                            }
+                            else if(Integer.parseInt(received)>=1500 && Integer.parseInt(received)<2000){
+                                air_quality_value.setText("Good");
+                                air_quality_value.setTextColor(getResources().getColor(R.color.green_700));
+                            }
+//                            receivedDataView.setText("Sensor Value: " + received);
+                        });
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Reading failed", e);
+                    break;
+                }
+            }
+        }).start();
+    }
+
+
 
     private void sendCommand(String cmd) {
         if (outputStream != null) {
@@ -219,14 +266,15 @@ public class MainActivity extends AppCompatActivity {
     private void updateStatus(boolean connected) {
         isConnected = connected;
         int color = connected ? getResources().getColor(R.color.green_700) : getResources().getColor(R.color.red_700);
-        statusDot.setBackgroundTintList(getResources().getColorStateList(connected ? R.color.green_700 : R.color.red_700));
-        if(statusDot.getBackgroundTintList()== ColorStateList.valueOf(R.color.green_700)){
+        statusDot.setBackgroundTintList(ColorStateList.valueOf(color));
+
+        if (connected) {
             status_text.setText("Connected");
-        }
-        else{
+        } else {
             status_text.setText("Disconnected");
         }
     }
+
 
     @Override
     protected void onDestroy() {
