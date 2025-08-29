@@ -31,4 +31,5 @@
     <color name="fan_button_icon_color">@color/gray_600</color>
     <color name="fan_button_icon_color_on">@android:color/white</color>
     <color name="red_700">#D32F2F</color>
+    <color name="orange_700">#F57C00</color>
 </resources>
