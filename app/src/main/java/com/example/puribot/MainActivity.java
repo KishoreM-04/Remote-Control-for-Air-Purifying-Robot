@@ -230,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
                                 air_quality_value.setTextColor(getResources().getColor(R.color.red_700));
                             }
                             else if(Integer.parseInt(received)>=2000 && Integer.parseInt(received)<2500){
-                                air_quality_value.setText("Average");
+                                air_quality_value.setText("Moderate");
                                 air_quality_value.setTextColor(getResources().getColor(R.color.orange_700));
                             }
                             else if(Integer.parseInt(received)>=1500 && Integer.parseInt(received)<2000){
