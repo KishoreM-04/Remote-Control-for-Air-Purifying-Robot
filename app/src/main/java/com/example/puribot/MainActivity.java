@@ -8,17 +8,18 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.material.button.MaterialButton;
 
@@ -31,7 +32,7 @@ import java.util.UUID;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_ENABLE_BT = 1;
-    private static final int REQUEST_LOCATION_PERMISSION = 2;
+    private static final int REQUEST_PERMISSION_CODE = 100;
 
     private static final String DEVICE_NAME = "ESP32-RC-CAR";
     private static final UUID ESP32_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
@@ -50,12 +51,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        status_text=findViewById(R.id.status_text);
+        status_text = findViewById(R.id.status_text);
         statusDot = findViewById(R.id.status_dot);
         MaterialButton fanToggle = findViewById(R.id.fan_toggle_button);
         TextView fanStatusText = findViewById(R.id.fan_status_text);
         MaterialButton settings_button = findViewById(R.id.settings_button);
-        settings_button.setOnClickListener(v->{
+        settings_button.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, settings_Page.class);
             startActivity(intent);
         });
@@ -65,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton btnBackward = findViewById(R.id.button_backward);
         MaterialButton btnLeft = findViewById(R.id.button_left);
         MaterialButton btnRight = findViewById(R.id.button_right);
-        MaterialButton fan_toggle_button=findViewById(R.id.fan_toggle_button);
+        MaterialButton fan_toggle_button = findViewById(R.id.fan_toggle_button);
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
@@ -74,15 +75,8 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
 
-        // Request permission
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    REQUEST_LOCATION_PERMISSION);
-        } else {
-            enableBluetooth();
-        }
+        // Request permissions depending on Android version
+        requestRequiredPermissions();
 
         fanToggle.setOnClickListener(v -> {
             if (!isConnected) {
@@ -112,8 +106,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-
-
         btnLeft.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 sendCommand("L");
@@ -132,20 +124,39 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        fan_toggle_button.setOnClickListener(v->sendCommand("SC"));
+        fan_toggle_button.setOnClickListener(v -> sendCommand("SC"));
+    }
 
+    /**
+     * Request Nearby Devices or Location permissions depending on Android version
+     */
+    private void requestRequiredPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ → Request Bluetooth permissions
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT},
+                        REQUEST_PERMISSION_CODE);
+            } else {
+                enableBluetooth();
+            }
+        } else {
+            // Android 11 or lower → Request Location permissions
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                        REQUEST_PERMISSION_CODE);
+            } else {
+                enableBluetooth();
+            }
+        }
     }
 
     private void enableBluetooth() {
         if (!bluetoothAdapter.isEnabled()) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
                 return;
             }
             startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQUEST_ENABLE_BT);
@@ -187,7 +198,6 @@ public class MainActivity extends AppCompatActivity {
                         outputStream = bluetoothSocket.getOutputStream();
                         inputStream = bluetoothSocket.getInputStream();
                         isConnected = true;
-                        // ✅ Share the socket with SettingsActivity
                         settings_Page.setBluetoothSocket(bluetoothSocket);
                         runOnUiThread(() -> {
                             updateStatus(true);
@@ -225,19 +235,16 @@ public class MainActivity extends AppCompatActivity {
 
                         runOnUiThread(() -> {
                             TextView air_quality_value = findViewById(R.id.air_quality_value);
-                            if(Integer.parseInt(received)>=2500){
+                            if (Integer.parseInt(received) >= 2500) {
                                 air_quality_value.setText("Bad");
                                 air_quality_value.setTextColor(getResources().getColor(R.color.red_700));
-                            }
-                            else if(Integer.parseInt(received)>=2000 && Integer.parseInt(received)<2500){
+                            } else if (Integer.parseInt(received) >= 2000 && Integer.parseInt(received) < 2500) {
                                 air_quality_value.setText("Moderate");
                                 air_quality_value.setTextColor(getResources().getColor(R.color.orange_700));
-                            }
-                            else if(Integer.parseInt(received)>=1500 && Integer.parseInt(received)<2000){
+                            } else if (Integer.parseInt(received) >= 1500 && Integer.parseInt(received) < 2000) {
                                 air_quality_value.setText("Good");
                                 air_quality_value.setTextColor(getResources().getColor(R.color.green_700));
                             }
-//                            receivedDataView.setText("Sensor Value: " + received);
                         });
                     }
                 } catch (IOException e) {
@@ -247,8 +254,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
-
-
 
     private void sendCommand(String cmd) {
         if (outputStream != null) {
@@ -274,7 +279,6 @@ public class MainActivity extends AppCompatActivity {
             status_text.setText("Disconnected");
         }
     }
-
 
     @Override
     protected void onDestroy() {
